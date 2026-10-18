@@ -77,6 +77,17 @@ export const milestoneItemSchema = z.object({
     .optional(),
   pull_request: z.object({ url: z.string() }).optional(),
 });
+export const subIssueSchema = z.object({
+  number: positiveId,
+  title: z.string(),
+  body: z.string().nullable().optional(),
+  state: z.enum(["open", "closed"]).optional(),
+  user: z
+    .object({ id: positiveId.optional(), type: z.string().optional() })
+    .nullable()
+    .optional(),
+  pull_request: z.object({ url: z.string() }).optional(),
+});
 export const pullFileSchema = z.object({
   filename: z.string(),
   status: z.string(),

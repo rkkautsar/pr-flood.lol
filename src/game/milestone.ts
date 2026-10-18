@@ -173,8 +173,8 @@ async function judgementInput(
 ): Promise<MilestoneJudgement> {
   const stage = scenarioFor(run);
   const root = runRoot(run);
-  const items = await gh.listMilestoneItems(root, run.milestone!);
-  const issueItems = items.filter((item) => !item.pull_request).slice(0, 8);
+  const items = await gh.listSubIssues(root, run.master!);
+  const issueItems = items.filter((item) => !item.pull_request).slice(0, 30);
   // PRs do not always inherit their linked issue's milestone in GitHub, so
   // include repository PRs and grade their linked issue references.
   const pullList = await gh.listPullDetails(root);

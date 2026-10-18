@@ -24,7 +24,7 @@ export async function provisionLaunch(
       { id: job.scenario, version: job.version, digest: job.digest },
       storage,
     ),
-    selection = selectScenario(pack),
+    selection = selectScenario(pack, job.stage ?? pack.stages[0].id),
     root = "/repos/" + login.user.login + "/" + job.name;
   if (!job.quotaGranted)
     throw Object.assign(Error("Launch quota not granted"), { status: 403 });

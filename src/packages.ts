@@ -22,6 +22,8 @@ export type Stage = {
     pullRequestQuality: string;
     reviewQuality: string;
   };
+  /** Cards sharing a pool are alternative milestone briefs over one evolving app. */
+  pool?: string;
   issues: { id: string; title: string; body: string }[];
   proposals: Proposal[];
   endings: { success: string; incomplete: string; partial: string };

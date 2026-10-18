@@ -16,6 +16,10 @@ export async function seedRun(store: Persistence, r: Run, gh: GitHub) {
   r.mode = scenarioFor(r).mode ?? "review";
   if (r.mode === "milestone") {
     const stage = scenarioFor(r);
+    if (stage.pool) {
+      r.offeredCards ??= [stage.id];
+      r.rerollsRemaining ??= 2;
+    }
     r.milestoneChecks ??= [];
     if (!r.milestoneChecks.some((check) => check.stage === stage.id))
       r.milestoneChecks.push({
@@ -60,7 +64,9 @@ export async function seedRun(store: Persistence, r: Run, gh: GitHub) {
   await atSeedStep("pin_baseline", () => pinBaseline(store, r, gh));
   if (!r.milestone) {
     await atSeedStep("create_milestone", async () => {
-      const title = pack.title + " — " + r.id;
+      const stage = scenarioFor(r);
+      const title =
+        pack.title + " — " + r.id + (stage.pool ? ` [card:${stage.id}]` : "");
       const existing = (await gh.listMilestones(root)).find(
         (x) => x.title === title,
       );
@@ -179,6 +185,9 @@ export async function seedRun(store: Persistence, r: Run, gh: GitHub) {
   });
   await atSeedStep("update_master_issue", () =>
     gh.patch(root + "/issues/" + r.master, {
+      ...(scenarioFor(r).mode === "milestone"
+        ? { title: "Game Master — " + scenarioFor(r).title }
+        : {}),
       body: storyBody(r) + "\n\n" + runMarker(r, "master"),
     }),
   );

@@ -116,6 +116,10 @@ const packageSchema = z
               })
               .strict()
               .optional(),
+            pool: z
+              .string()
+              .regex(/^[a-z][a-z0-9-]{0,47}$/)
+              .optional(),
             issues: z
               .array(
                 z.object({ id, title: z.string(), body: z.string() }).strict(),
@@ -211,6 +215,23 @@ export function validatePackage(value: unknown): ScenarioPackage {
         !(stage.workflowPath in stage.baseline))
     )
       throw new Error("Invalid milestone workflow path");
+  }
+  for (const pool of new Set(
+    pack.stages.map((stage) => stage.pool).filter(Boolean),
+  )) {
+    const cards = pack.stages.filter((stage) => stage.pool === pool);
+    if (cards.length < 2 || cards.some((stage) => stage.mode !== "milestone"))
+      throw new Error("Milestone card pools need at least two milestone cards");
+    const baseline = JSON.stringify(Object.entries(cards[0].baseline).sort());
+    if (
+      cards.some(
+        (stage) =>
+          JSON.stringify(Object.entries(stage.baseline).sort()) !== baseline,
+      )
+    )
+      throw new Error(
+        "Milestone cards in a pool must share one starting baseline",
+      );
   }
   const { digest, ...content } = pack;
   const bytes = JSON.stringify(content);

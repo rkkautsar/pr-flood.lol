@@ -66,6 +66,9 @@ export const runSchema: z.ZodType<Run> = z.object({
       }),
     )
     .optional(),
+  offeredCards: strings.optional(),
+  rerollsRemaining: z.number().int().nonnegative().optional(),
+  rerollCommentIds: z.array(positiveId).max(32).optional(),
   previousRun: z.string().optional(),
   reason: z.string().optional(),
   phaseBeforeAccessLoss: z

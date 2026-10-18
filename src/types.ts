@@ -44,6 +44,10 @@ export type Run = {
   scenario: { id: string; version: string; stage: string; digest: string };
   /** Trusted milestone suites accumulated along this playthrough. */
   milestoneChecks?: MilestoneCheckSnapshot[];
+  /** Milestone cards already shown in this playthrough. */
+  offeredCards?: string[];
+  rerollsRemaining?: number;
+  rerollCommentIds?: number[];
   previousRun?: string;
   reason?: string;
   phaseBeforeAccessLoss?: Phase;

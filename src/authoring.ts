@@ -55,6 +55,10 @@ const stageSchema = z
       })
       .strict()
       .optional(),
+    pool: z
+      .string()
+      .regex(/^[a-z][a-z0-9-]{0,47}$/)
+      .optional(),
     endings: z
       .object({
         success: z.string(),
@@ -297,6 +301,7 @@ export function publishScenario(repoInput: string): ScenarioPackage {
         "workflowPath",
         "protectedFiles",
         "evaluation",
+        "pool",
       ],
       "stage",
     );
@@ -548,6 +553,7 @@ export function publishScenario(repoInput: string): ScenarioPackage {
             workflowPath: stageMeta.workflowPath,
             protectedFiles: stageMeta.protectedFiles,
             evaluation: stageMeta.evaluation,
+            ...(stageMeta.pool ? { pool: stageMeta.pool } : {}),
           }
         : {}),
       issues,

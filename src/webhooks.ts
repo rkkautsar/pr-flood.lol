@@ -21,6 +21,7 @@ export const webhookSchema = z.object({
   pull_request: z.object({ number: positiveId }).optional(),
   comment: z
     .object({
+      id: positiveId.optional(),
       body: z.string(),
       user: z.object({ id: positiveId, type: z.string().optional() }),
     })

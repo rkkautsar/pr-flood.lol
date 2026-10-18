@@ -6,6 +6,7 @@ export type Job = {
   connected?: boolean;
   scenario: string;
   version: string;
+  stage?: string;
   mode?: "review" | "milestone";
   digest?: string;
   marker?: string;

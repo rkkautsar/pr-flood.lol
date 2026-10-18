@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { errorStatus, failureCode, report } from "../diagnostics.ts";
 import { authorize } from "../launch/auth.ts";
@@ -141,12 +141,25 @@ export class LaunchSession extends DurableObject<Env> {
             "Use a repository name up to 80 letters, numbers, dots, underscores or hyphens.",
             400,
           );
+        const pool = pack.stages[0].pool;
+        const cards = pool
+          ? pack.stages.filter((stage) => stage.pool === pool)
+          : [];
+        const stage = cards.length
+          ? cards[
+              parseInt(
+                createHash("sha256").update(id).digest("hex").slice(0, 8),
+                16,
+              ) % cards.length
+            ]
+          : pack.stages[0];
         const job: Job = {
           id,
           owner: login.user.id,
           scenario: pack.id,
           version: pack.version,
-          mode: pack.stages[0].mode ?? "review",
+          stage: stage.id,
+          mode: stage.mode ?? "review",
           digest: pack.digest,
           marker: "PR Flood playthrough · " + id,
           name,

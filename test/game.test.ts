@@ -47,6 +47,11 @@ class Fake extends GitHub {
     throw new Error("Unexpected GET " + path);
   }
   async list(path: string) {
+    const subIssues = /\/issues\/(\d+)\/sub_issues/.exec(path);
+    if (subIssues)
+      return this.issues.filter(
+        (issue) => issue.parent_number === Number(subIssues[1]),
+      );
     if (/\/issues\?milestone=\d+&state=all/.test(path)) {
       const number = Number(path.match(/\?milestone=(\d+)/)?.[1]);
       return this.issues.filter((issue) => issue.milestone === number);
@@ -89,7 +94,7 @@ class Fake extends GitHub {
       return {};
     }
     if (path.endsWith("/milestones")) {
-      const m = { ...body, number: 1 };
+      const m = { ...body, number: this.milestones.length + 1 };
       this.milestones.push(m);
       return m;
     }
@@ -199,13 +204,15 @@ async function setup(
   if (seed) await game.seed(r);
   return { s, fake, game, r };
 }
-function payload(r: Run, body?: string, user = 3) {
+function payload(r: Run, body?: string, user = 3, commentId?: number) {
   return {
     installation: { id: 1 },
     repository: { id: 2 },
     action: "created",
     issue: { number: r.master },
-    ...(body !== undefined ? { comment: { body, user: { id: user } } } : {}),
+    ...(body !== undefined
+      ? { comment: { body, id: commentId, user: { id: user } } }
+      : {}),
   };
 }
 test("seeding resumes with exact object counts and no duplicate creation", async () => {
@@ -243,12 +250,13 @@ test("milestone stage seeds no authored work and gives full outcome credit on it
   try {
     assert.equal(fake.issues.length, 1);
     assert.equal(fake.prs.length, 0);
-    assert.match(fake.issues[0].body, /Create the GitHub issues you need/);
+    assert.match(fake.issues[0].body, /direct sub-issues of Game Master #1/);
     assert.equal(fake.milestones.length, 1);
 
     fake.issues.push(
       {
         number: 2,
+        parent_number: r.master,
         title: "Add activity records",
         body: "Show private replies and votes, newest first.",
         state: "open",
@@ -257,6 +265,7 @@ test("milestone stage seeds no authored work and gives full outcome credit on it
       },
       {
         number: 4,
+        parent_number: r.master,
         title: "Add private inbox",
         body: "Build a private inbox for replies and votes.",
         state: "open",
@@ -354,6 +363,61 @@ test("milestone stage seeds no authored work and gives full outcome credit on it
     assert.equal(result.scorecard?.clarificationRounds, 1);
     assert.equal(result.scorecard?.issueClarity, 65);
     assert.equal(result.points, 68);
+  } finally {
+    s.close();
+  }
+});
+test("milestone reroll changes the card only before planning begins", async () => {
+  const { s, fake, game, r } = await setup(selectScenario(inboxPack));
+  try {
+    assert.equal(r.rerollsRemaining, 2);
+    await game.process("issue_comment", payload(r, "/game reroll", 3, 123));
+    await game.process("issue_comment", payload(r, "/game reroll", 3, 123));
+    assert.equal(s.get(r.id).scenario.stage, "mentions");
+    assert.equal(s.get(r.id).rerollsRemaining, 1);
+    assert.match(fake.issues[0].body, /Mention a teammate/);
+    assert.match(fake.milestones[0].title, /\[card:mentions\]/);
+    fake.issues.push({
+      number: 2,
+      parent_number: r.master,
+      title: "Notification requirements",
+      body: "Create recipient specific notifications.",
+      user: { id: r.player, type: "User" },
+    });
+    await game.process("issue_comment", payload(r, "/game reroll"));
+    assert.equal(s.get(r.id).scenario.stage, "mentions");
+    assert.equal(s.get(r.id).rerollsRemaining, 1);
+    assert.match(
+      fake.comments.at(-1).body,
+      /only change before you create sub-issues/,
+    );
+  } finally {
+    s.close();
+  }
+});
+test("next milestone card starts from the evolved default branch and keeps prior checks", async () => {
+  const { s, fake, game, r } = await setup(selectScenario(inboxPack));
+  try {
+    fake.files["merged-after-inbox"] = {
+      ...fake.files.baseline,
+      "web/app.ts": "accepted implementation stays in place\n",
+    };
+    fake.refs.main = "merged-after-inbox";
+    await game.process("issue_comment", payload(r, "/game finish"));
+    await game.process("issue_comment", payload(r, "/game next"));
+    const next = s.all().find((run) => run.previousRun === r.id)!;
+    assert.equal(next.scenario.stage, "mentions");
+    assert.equal(next.base, "main");
+    assert.equal(next.baseline, "merged-after-inbox");
+    assert.equal(
+      next.baselineFiles?.["web/app.ts"],
+      "accepted implementation stays in place\n",
+    );
+    assert.deepEqual(
+      next.milestoneChecks?.map((check) => check.stage),
+      ["private-inbox", "mentions"],
+    );
+    assert.deepEqual(next.offeredCards, ["private-inbox", "mentions"]);
   } finally {
     s.close();
   }

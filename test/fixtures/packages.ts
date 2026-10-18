@@ -11,6 +11,8 @@ const baseline = {
   ...forum.stages[0].baseline,
   ".github/workflows/inbox-e2e.yml": "name: Inbox E2E\njob: browser\n",
   "test/e2e/inbox.spec.ts": "test('private inbox behavior', () => {});\n",
+  ".github/workflows/mentions-e2e.yml": "name: Mentions E2E\njob: browser\n",
+  "test/e2e/mentions.spec.ts": "test('mentions behavior', () => {});\n",
 };
 const inboxStage: Stage = {
   id: "private-inbox",
@@ -19,6 +21,7 @@ const inboxStage: Stage = {
     "Build a private activity inbox for replies and votes on threads the signed-in member created. Exclude activity authored by that member and all activity on other members' threads. Show the newest 20 events first, provide an empty state, navigate to the source thread, and let each member mark events read.",
   baseline,
   mode: "milestone",
+  pool: "inbox-cards",
   requiredCheck: "Inbox E2E / browser",
   workflowPath: ".github/workflows/inbox-e2e.yml",
   protectedFiles: [".github/workflows/inbox-e2e.yml", "test/e2e/inbox.spec.ts"],
@@ -40,6 +43,18 @@ const inboxStage: Stage = {
     partial: "The milestone could not be fully assessed.",
   },
 };
+const mentionsStage: Stage = {
+  ...inboxStage,
+  id: "mentions",
+  title: "Mention a teammate",
+  intro: "Notify the people named in a message and take them to its source.",
+  requiredCheck: "Mentions E2E / browser",
+  workflowPath: ".github/workflows/mentions-e2e.yml",
+  protectedFiles: [
+    ".github/workflows/mentions-e2e.yml",
+    "test/e2e/mentions.spec.ts",
+  ],
+};
 export const milestonePackage: ScenarioPackage = {
   ...forum,
   id: "forum-inbox",
@@ -47,7 +62,7 @@ export const milestonePackage: ScenarioPackage = {
   title: "Forum Inbox",
   description: "A milestone-driven Forum stage.",
   digest: "c".repeat(64),
-  stages: [inboxStage],
+  stages: [inboxStage, mentionsStage],
 };
 
 /** Compact synthetic release content for core/game/storage tests. */

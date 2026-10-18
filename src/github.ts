@@ -87,6 +87,11 @@ export class GitHub {
       await this.list(root + "/issues?milestone=" + milestone + "&state=all")
     ).map((x) => parse(schemas.milestoneItemSchema, x));
   }
+  async listSubIssues(root: string, parent: number) {
+    return (await this.list(root + "/issues/" + parent + "/sub_issues")).map(
+      (x) => parse(schemas.subIssueSchema, x),
+    );
+  }
   async listMilestones(root: string) {
     return (await this.list(root + "/milestones?state=all")).map((x) =>
       parse(schemas.numberedSchema, x),

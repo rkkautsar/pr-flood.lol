@@ -1,7 +1,7 @@
 import { failureCode, report } from "./diagnostics.ts";
 import { assess } from "./engine.ts";
 import { postNotice, sendStoryTouches } from "./game/messages.ts";
-import { advanceStage } from "./game/progression.ts";
+import { advanceStage, rerollMilestoneCard } from "./game/progression.ts";
 import { seedRun } from "./game/provisioning.ts";
 import { publishResult } from "./game/publishing.ts";
 import { reconcileRun } from "./game/reconciliation.ts";
@@ -142,6 +142,26 @@ export class Game {
           payload.comment?.user.id === r.player
             ? command(payload.comment.body)
             : undefined;
+        if (cmd?.kind === "reroll") {
+          const changed = await rerollMilestoneCard(
+            this.store,
+            r,
+            gh,
+            payload.comment?.id,
+          );
+          await this.notice(
+            r,
+            gh,
+            "milestone-reroll-" +
+              (changed.ok ? "changed-" : "blocked-") +
+              (r.offeredCards?.length ?? 0) +
+              (changed.ok ? "" : "-" + r.rerollsRemaining),
+            changed.ok
+              ? `🎲 New milestone card: **${changed.title}**. You have ${r.rerollsRemaining ?? 0} card change(s) left. Start planning with direct sub-issues under this issue.`
+              : changed.message,
+          );
+          continue;
+        }
         const testStatus =
           cmd?.kind === "finish" ? undefined : await milestoneTestStatus(r, gh);
         if (testStatus === "passed") {

@@ -116,6 +116,9 @@ export default {
                       detail: "Roadmap issue",
                     })),
             },
+            milestoneCards: p.stages
+              .filter((stage) => stage.pool && stage.mode === "milestone")
+              .map((stage) => ({ id: stage.id, title: stage.title })),
           })),
           { headers: { "cache-control": "no-store" } },
         );
