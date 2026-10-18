@@ -46,6 +46,7 @@ const stageSchema = z
     requiredCheck: z.string().optional(),
     workflowPath: z.string().optional(),
     protectedFiles: z.array(z.string()).optional(),
+    visibleEvaluatorFiles: z.array(z.string()).max(20).optional(),
     evaluation: z
       .object({
         issueBreakdown: z.string(),
@@ -300,6 +301,7 @@ export function publishScenario(repoInput: string): ScenarioPackage {
         "requiredCheck",
         "workflowPath",
         "protectedFiles",
+        "visibleEvaluatorFiles",
         "evaluation",
         "pool",
       ],
@@ -344,6 +346,7 @@ export function publishScenario(repoInput: string): ScenarioPackage {
         !stageMeta.requiredCheck &&
           !stageMeta.workflowPath &&
           !stageMeta.protectedFiles &&
+          !stageMeta.visibleEvaluatorFiles &&
           !stageMeta.evaluation,
         "Review stages cannot define milestone-only fields",
       );
@@ -492,6 +495,15 @@ export function publishScenario(repoInput: string): ScenarioPackage {
         );
       }
       need(
+        stageMeta.visibleEvaluatorFiles === undefined ||
+          (new Set(stageMeta.visibleEvaluatorFiles).size ===
+            stageMeta.visibleEvaluatorFiles.length &&
+            stageMeta.visibleEvaluatorFiles.every((path) =>
+              stageMeta.protectedFiles!.includes(path),
+            )),
+        "Visible evaluator files must be unique protected files",
+      );
+      need(
         typeof stageMeta.workflowPath === "string" &&
           stageMeta.workflowPath.startsWith(".github/workflows/") &&
           stageMeta.workflowPath in baseline &&
@@ -549,7 +561,9 @@ export function publishScenario(repoInput: string): ScenarioPackage {
         mode === "milestone"
           ? Object.fromEntries(
               Object.entries(baseline).filter(
-                ([path]) => !stageMeta.protectedFiles!.includes(path),
+                ([path]) =>
+                  !stageMeta.protectedFiles!.includes(path) ||
+                  stageMeta.visibleEvaluatorFiles?.includes(path),
               ),
             )
           : baseline,
@@ -559,6 +573,9 @@ export function publishScenario(repoInput: string): ScenarioPackage {
             requiredCheck: stageMeta.requiredCheck,
             workflowPath: stageMeta.workflowPath,
             protectedFiles: stageMeta.protectedFiles,
+            ...(stageMeta.visibleEvaluatorFiles
+              ? { visibleEvaluatorFiles: stageMeta.visibleEvaluatorFiles }
+              : {}),
             evaluatorFiles: Object.fromEntries(
               stageMeta.protectedFiles!.map((path) => [path, baseline[path]]),
             ),

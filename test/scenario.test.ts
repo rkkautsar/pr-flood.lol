@@ -120,3 +120,75 @@ test("publisher accepts a milestone stage with protected E2E files and no prepar
     rmSync(repo, { recursive: true, force: true });
   }
 });
+
+test("publisher includes explicitly visible evaluator files while retaining trusted copies", () => {
+  const { repo, git } = authoringRepository();
+  try {
+    rmSync(join(repo, "__scenario__/stages/launch/issues"), {
+      recursive: true,
+      force: true,
+    });
+    rmSync(join(repo, "__scenario__/stages/launch/prs"), {
+      recursive: true,
+      force: true,
+    });
+    const stage = [
+      "---",
+      "title: Public evaluator",
+      "mode: milestone",
+      "requiredCheck: Inbox E2E / browser",
+      "workflowPath: .github/workflows/inbox-e2e.yml",
+      "protectedFiles:",
+      "  - .github/workflows/inbox-e2e.yml",
+      "  - test/e2e/inbox.spec.ts",
+      "visibleEvaluatorFiles:",
+      "  - test/e2e/inbox.spec.ts",
+      "evaluation:",
+      '  issueBreakdown: "Reward independently reviewable issues."',
+      '  issueClarity: "Reward clear scope."',
+      '  pullRequestQuality: "Judge correctness."',
+      '  reviewQuality: "Reward substantive feedback."',
+      "endings:",
+      "  success: Ready",
+      "  incomplete: More work",
+      "  partial: Needs a check",
+      "---",
+      "Build the inbox using the visible acceptance test.",
+    ].join("\n");
+    writeFileSync(join(repo, "__scenario__/stages/launch/stage.md"), stage);
+    mkdirSync(join(repo, ".github/workflows"), { recursive: true });
+    mkdirSync(join(repo, "test/e2e"), { recursive: true });
+    writeFileSync(
+      join(repo, ".github/workflows/inbox-e2e.yml"),
+      "name: Inbox E2E\n",
+    );
+    writeFileSync(
+      join(repo, "test/e2e/inbox.spec.ts"),
+      "test('inbox', () => {});\n",
+    );
+    git("add", ".");
+    git("commit", "-m", "Add public milestone test");
+    const baseSha = git("rev-parse", "HEAD").toString().trim();
+    git("update-ref", "refs/remotes/origin/review/stage/launch/base", baseSha);
+
+    const pack = publishScenario(repo);
+    assert.deepEqual(pack.stages[0].visibleEvaluatorFiles, [
+      "test/e2e/inbox.spec.ts",
+    ]);
+    assert.equal(
+      pack.stages[0].baseline["test/e2e/inbox.spec.ts"],
+      "test('inbox', () => {});\n",
+    );
+    assert.equal(
+      pack.stages[0].baseline[".github/workflows/inbox-e2e.yml"],
+      undefined,
+    );
+    assert.equal(
+      pack.stages[0].evaluatorFiles?.["test/e2e/inbox.spec.ts"],
+      pack.stages[0].baseline["test/e2e/inbox.spec.ts"],
+    );
+    assert.equal(validatePackage(pack).stages[0].mode, "milestone");
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+});

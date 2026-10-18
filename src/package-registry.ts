@@ -107,6 +107,10 @@ const packageSchema = z
               .array(z.string().min(1).max(240))
               .max(20)
               .optional(),
+            visibleEvaluatorFiles: z
+              .array(z.string().min(1).max(240))
+              .max(20)
+              .optional(),
             evaluatorFiles: files.optional(),
             evaluation: z
               .object({
@@ -188,14 +192,23 @@ export function validatePackage(value: unknown): ScenarioPackage {
       (stage.requiredCheck ||
         stage.workflowPath ||
         stage.protectedFiles ||
+        stage.visibleEvaluatorFiles ||
         stage.evaluatorFiles ||
         stage.evaluation)
     )
       throw new Error("Review stages cannot define a milestone check");
     const evaluatorFiles = stage.evaluatorFiles;
+    const visibleEvaluatorFiles = stage.visibleEvaluatorFiles ?? [];
     if (
       stage.protectedFiles &&
       (new Set(stage.protectedFiles).size !== stage.protectedFiles.length ||
+        new Set(visibleEvaluatorFiles).size !== visibleEvaluatorFiles.length ||
+        visibleEvaluatorFiles.some(
+          (path) =>
+            !stage.protectedFiles!.includes(path) ||
+            !evaluatorFiles ||
+            stage.baseline[path] !== evaluatorFiles[path],
+        ) ||
         stage.protectedFiles.some(
           (path) =>
             path.startsWith("/") ||
@@ -203,7 +216,10 @@ export function validatePackage(value: unknown): ScenarioPackage {
               .split("/")
               .some((part) => !part || part === "." || part === "..") ||
             (evaluatorFiles
-              ? !(path in evaluatorFiles) || path in stage.baseline
+              ? !(path in evaluatorFiles) ||
+                (path in stage.baseline &&
+                  (!visibleEvaluatorFiles.includes(path) ||
+                    stage.baseline[path] !== evaluatorFiles[path]))
               : !(path in stage.baseline)),
         ) ||
         (evaluatorFiles &&
