@@ -3,6 +3,16 @@ import { z } from "zod";
 import { decodeCoaching } from "../review-coaching.ts";
 import type { Env } from "./env.ts";
 const categories = ["absent", "vague", "identified", "consequence"];
+function validMilestoneQuality(value: string) {
+  const match =
+    /^milestone-quality-v2:(\d{1,3}|unknown):(\d{1,3}|unknown):(\d{1,3}|unknown):(\d{1,3}|unknown)$/.exec(
+      value,
+    );
+  return (
+    !!match &&
+    match.slice(1).every((score) => score === "unknown" || Number(score) <= 100)
+  );
+}
 export class AIBudget extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -79,7 +89,8 @@ export class AIBudget extends DurableObject<Env> {
       input.action === "complete" &&
       (input.result === null ||
         (typeof input.result === "string" &&
-          categories.includes(input.result)) ||
+          (categories.includes(input.result) ||
+            validMilestoneQuality(input.result))) ||
         !!decodeCoaching(input.result))
     ) {
       const tokens = input.inputTokens;

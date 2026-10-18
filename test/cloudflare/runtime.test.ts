@@ -985,7 +985,7 @@ test("actual workerd alarm signs GitHub App JWT for a packaged seed", async () =
   }
 });
 
-test("shared budget caches only validated coaching tags", async () => {
+test("shared budget caches validated coaching and milestone scores", async () => {
   const mf = runtime();
   try {
     const ns = await mf.getDurableObjectNamespace("BUDGET");
@@ -1033,6 +1033,46 @@ test("shared budget caches only validated coaching tags", async () => {
           key,
           result: { points: 100 },
           inputTokens: 600,
+        })
+      ).status,
+      400,
+    );
+    const milestoneKey = "d".repeat(64);
+    assert.equal(
+      (
+        (await (
+          await call({ action: "claim", key: milestoneKey })
+        ).json()) as any
+      ).claimed,
+      true,
+    );
+    const milestoneResult = "milestone-quality-v2:0:40:75:100";
+    assert.equal(
+      (
+        await call({
+          action: "complete",
+          key: milestoneKey,
+          result: milestoneResult,
+          inputTokens: 900,
+        })
+      ).status,
+      200,
+    );
+    assert.equal(
+      (
+        (await (
+          await call({ action: "claim", key: milestoneKey })
+        ).json()) as any
+      ).result,
+      milestoneResult,
+    );
+    assert.equal(
+      (
+        await call({
+          action: "complete",
+          key: "e".repeat(64),
+          result: "milestone-quality-v2:0:40:75:101",
+          inputTokens: 900,
         })
       ).status,
       400,

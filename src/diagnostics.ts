@@ -29,6 +29,7 @@ export type Diagnostic = {
   component: "game" | "launch" | "judge" | "http";
   event: string;
   reason?: string;
+  dimension?: string;
   run?: string;
   delivery?: string;
   requests?: number;
@@ -40,6 +41,7 @@ export const report: Reporter = ({
   component,
   event,
   reason,
+  dimension,
   run,
   delivery,
   requests,
@@ -50,6 +52,7 @@ export const report: Reporter = ({
       component,
       event,
       reason,
+      dimension,
       run,
       delivery,
       requests,

@@ -149,6 +149,9 @@ function choice(
     ),
   };
 }
+function score(value: number, confidence = 0.9) {
+  return { type: "score", score: value, confidence };
+}
 test("coaching has separate questions, cache value, and low-confidence dimensions", async () => {
   const f = fixture({
     answers: {
@@ -183,19 +186,13 @@ test("coaching cannot substitute a fabricated choice or mismatched probabilities
   assert.equal(await f.judge.coach("Missing owner check", {}), undefined);
 });
 
-test("milestone judge returns independent model-agnostic score dimensions", async () => {
-  const levels = {
-    poor: "poor",
-    mixed: "mixed",
-    good: "good",
-    excellent: "excellent",
-  };
+test("milestone judge accepts score answers without a confidence cutoff", async () => {
   const f = fixture({
     answers: {
-      issueBreakdown: choice(levels, "poor", 0.99),
-      issueClarity: choice(levels, "good", 0.99),
-      pullRequestQuality: choice(levels, "excellent", 0.99),
-      reviewQuality: choice(levels, "mixed", 0.99),
+      issueBreakdown: score(0, 0.1),
+      issueClarity: score(2),
+      pullRequestQuality: score(3),
+      reviewQuality: score(1),
     },
     usage: { input_tokens: 900 },
   });
@@ -214,26 +211,22 @@ test("milestone judge returns independent model-agnostic score dimensions", asyn
       reviewQuality: 40,
     },
   );
+  assert.equal(f.requestArgs[0][1].questions.issueBreakdown.type, "score");
   assert.deepEqual(
     f.calls.map((call) => call.action),
     ["claim", "complete"],
   );
   assert.equal(f.calls[1].inputTokens, 900);
+  assert.match(f.calls[1].result, /^milestone-quality-v2:/);
 });
 
-test("uncertain milestone dimensions remain unassessed independently", async () => {
-  const levels = {
-    poor: "poor",
-    mixed: "mixed",
-    good: "good",
-    excellent: "excellent",
-  };
+test("invalid milestone score remains unassessed independently", async () => {
   const f = fixture({
     answers: {
-      issueBreakdown: choice(levels, "good", 0.99),
-      issueClarity: choice(levels, "mixed", 0.99),
-      pullRequestQuality: choice(levels, "excellent", 0.99),
-      reviewQuality: choice(levels, "poor", 0.4),
+      issueBreakdown: score(2),
+      issueClarity: score(1),
+      pullRequestQuality: score(3),
+      reviewQuality: score(4),
     },
     usage: { input_tokens: 700 },
   });
