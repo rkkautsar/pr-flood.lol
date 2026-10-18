@@ -65,6 +65,7 @@ export async function advanceStage(store: Persistence, r: Run, gh: GitHub) {
     base: branch,
     baseline: sha,
     scenario: selectScenario(stage.pack, target.id),
+    milestoneChecks: r.milestoneChecks ? [...r.milestoneChecks] : undefined,
   };
   store.save(next);
   await seedRun(store, next, gh);

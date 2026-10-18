@@ -42,6 +42,8 @@ export type Run = {
   phase: Phase;
   mode?: "review" | "milestone";
   scenario: { id: string; version: string; stage: string; digest: string };
+  /** Trusted milestone suites accumulated along this playthrough. */
+  milestoneChecks?: MilestoneCheckSnapshot[];
   previousRun?: string;
   reason?: string;
   phaseBeforeAccessLoss?: Phase;
@@ -62,6 +64,13 @@ export type Run = {
   storySent?: Record<string, boolean>;
   result?: Assessment;
   finishEarly?: boolean;
+};
+export type MilestoneCheckSnapshot = {
+  stage: string;
+  title: string;
+  requiredCheck: string;
+  workflowPath: string;
+  protectedFiles: Record<string, string>;
 };
 export type Assessment = {
   complete: string[];

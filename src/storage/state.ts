@@ -55,6 +55,17 @@ export const runSchema: z.ZodType<Run> = z.object({
     stage: z.string(),
     digest: z.string(),
   }),
+  milestoneChecks: z
+    .array(
+      z.object({
+        stage: z.string(),
+        title: z.string(),
+        requiredCheck: z.string(),
+        workflowPath: z.string(),
+        protectedFiles: files,
+      }),
+    )
+    .optional(),
   previousRun: z.string().optional(),
   reason: z.string().optional(),
   phaseBeforeAccessLoss: z

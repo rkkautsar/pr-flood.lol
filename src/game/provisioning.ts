@@ -14,6 +14,23 @@ export async function seedRun(store: Persistence, r: Run, gh: GitHub) {
     () => scenarioFor(r),
   );
   r.mode = scenarioFor(r).mode ?? "review";
+  if (r.mode === "milestone") {
+    const stage = scenarioFor(r);
+    r.milestoneChecks ??= [];
+    if (!r.milestoneChecks.some((check) => check.stage === stage.id))
+      r.milestoneChecks.push({
+        stage: stage.id,
+        title: stage.title,
+        requiredCheck: stage.requiredCheck!,
+        workflowPath: stage.workflowPath!,
+        protectedFiles: Object.fromEntries(
+          (stage.protectedFiles ?? []).map((path) => [
+            path,
+            stage.baseline[path],
+          ]),
+        ),
+      });
+  }
   store.save(r);
   const root = runRoot(r);
   const repository = await atSeedStep("read_repository", () =>

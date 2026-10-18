@@ -10,42 +10,116 @@ import { runRoot } from "./shared.ts";
 
 export type MilestoneTestStatus = "passed" | "failed" | "pending" | "missing";
 
+export type MilestoneTestReport = {
+  status: MilestoneTestStatus;
+  failed: string[];
+  pending: string[];
+  missing: string[];
+};
+
+export async function milestoneTestReport(
+  run: Run,
+  gh: GitHub,
+): Promise<MilestoneTestReport> {
+  const stage = scenarioFor(run);
+  if (!stage.requiredCheck || !stage.workflowPath)
+    return {
+      status: "missing",
+      failed: [],
+      pending: [],
+      missing: [stage.id],
+    };
+  const root = runRoot(run);
+  const sha = (await gh.reference(root, run.base!)).object.sha;
+  const suites = run.milestoneChecks?.length
+    ? run.milestoneChecks
+    : [
+        {
+          stage: stage.id,
+          title: stage.title,
+          requiredCheck: stage.requiredCheck,
+          workflowPath: stage.workflowPath,
+          protectedFiles: Object.fromEntries(
+            (stage.protectedFiles ?? []).map((path) => [
+              path,
+              stage.baseline[path],
+            ]),
+          ),
+        },
+      ];
+  const workflows = await gh.workflowRuns(root, sha);
+  const checks = await gh.checkRuns(root, sha);
+  const failed: string[] = [];
+  const pending: string[] = [];
+  const missing: string[] = [];
+  for (const suite of suites) {
+    const workflow = workflows
+      .filter(
+        (item) =>
+          (item.path === suite.workflowPath ||
+            item.path.startsWith(suite.workflowPath + "@")) &&
+          item.head_sha === sha,
+      )
+      .sort((a, b) =>
+        (b.created_at ?? "").localeCompare(a.created_at ?? ""),
+      )[0];
+    if (!workflow) {
+      missing.push(suite.title);
+      continue;
+    }
+    if (workflow.status !== "completed") {
+      pending.push(suite.title);
+      continue;
+    }
+    if (workflow.conclusion !== "success") {
+      failed.push(suite.title);
+      continue;
+    }
+    const check = checks.find(
+      (item) =>
+        (item.name === suite.requiredCheck ||
+          (workflow.name &&
+            suite.requiredCheck === `${workflow.name} / ${item.name}`)) &&
+        item.head_sha === sha &&
+        item.app?.slug === "github-actions" &&
+        item.check_suite?.id === workflow.check_suite_id,
+    );
+    if (!check) {
+      missing.push(suite.title);
+      continue;
+    }
+    if (check.status !== "completed") {
+      pending.push(suite.title);
+      continue;
+    }
+    if (check.conclusion !== "success") {
+      failed.push(suite.title);
+      continue;
+    }
+    const protectedPaths = Object.keys(suite.protectedFiles);
+    const observed = await gh.treeFiles(root, sha, protectedPaths);
+    if (
+      protectedPaths.some(
+        (path) => observed[path] !== suite.protectedFiles[path],
+      )
+    )
+      failed.push(suite.title);
+  }
+  const status: MilestoneTestStatus = failed.length
+    ? "failed"
+    : pending.length
+      ? "pending"
+      : missing.length
+        ? "missing"
+        : "passed";
+  return { status, failed, pending, missing };
+}
+
 export async function milestoneTestStatus(
   run: Run,
   gh: GitHub,
 ): Promise<MilestoneTestStatus> {
-  const stage = scenarioFor(run);
-  if (!stage.requiredCheck || !stage.workflowPath) return "missing";
-  const root = runRoot(run);
-  const sha = (await gh.reference(root, run.base!)).object.sha;
-  const workflow = (await gh.workflowRuns(root, sha))
-    .filter(
-      (check) =>
-        (check.path === stage.workflowPath ||
-          check.path.startsWith(stage.workflowPath + "@")) &&
-        check.head_sha === sha,
-    )
-    .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))[0];
-  if (!workflow) return "missing";
-  if (workflow.status !== "completed") return "pending";
-  if (workflow.conclusion !== "success") return "failed";
-  const check = (await gh.checkRuns(root, sha)).find(
-    (item) =>
-      (item.name === stage.requiredCheck ||
-        (workflow.name &&
-          stage.requiredCheck === `${workflow.name} / ${item.name}`)) &&
-      item.head_sha === sha &&
-      item.app?.slug === "github-actions" &&
-      item.check_suite?.id === workflow.check_suite_id,
-  );
-  if (!check) return "missing";
-  if (check.status !== "completed") return "pending";
-  if (check.conclusion !== "success") return "failed";
-  const protectedFiles = stage.protectedFiles ?? [];
-  const observed = await gh.treeFiles(root, sha, protectedFiles);
-  if (protectedFiles.some((path) => observed[path] !== stage.baseline[path]))
-    return "failed";
-  return "passed";
+  return (await milestoneTestReport(run, gh)).status;
 }
 
 const compact = (value: string | null | undefined, max: number) =>
@@ -243,7 +317,8 @@ export async function assessMilestone(
   reviewer: Reviewer,
   judgeEnabled: boolean,
 ): Promise<Assessment> {
-  const status = await milestoneTestStatus(run, gh);
+  const testReport = await milestoneTestReport(run, gh);
+  const status = testReport.status;
   const input =
     judgeEnabled && reviewer.gradeMilestone
       ? await judgementInput(run, gh, status)
@@ -287,12 +362,12 @@ export async function assessMilestone(
   );
   const explanation =
     status === "passed"
-      ? "The required behavioral E2E check passed on the current default branch."
+      ? "The active milestone and all previously completed milestone E2E suites passed on the current default branch."
       : status === "failed"
-        ? "The required behavioral E2E check failed on the current default branch."
+        ? `Milestone E2E suite(s) failed on the current default branch: ${testReport.failed.join(", ")}.`
         : status === "pending"
-          ? "The required behavioral E2E check is still running."
-          : "No completed run of the required behavioral E2E check was found on the current default branch.";
+          ? `Milestone E2E suite(s) are still running: ${testReport.pending.join(", ")}.`
+          : `No run was found for milestone E2E suite(s): ${testReport.missing.join(", ")}.`;
   const qualityLabels = {
     issueBreakdown: "issue breakdown",
     issueClarity: "issue clarity",
