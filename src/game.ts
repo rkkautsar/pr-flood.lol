@@ -5,7 +5,12 @@ import { advanceStage, rerollMilestoneCard } from "./game/progression.ts";
 import { seedRun } from "./game/provisioning.ts";
 import { publishResult } from "./game/publishing.ts";
 import { reconcileRun } from "./game/reconciliation.ts";
-import { assessMilestone, milestoneTestStatus } from "./game/milestone.ts";
+import {
+  assessMilestone,
+  installMilestoneTests,
+  milestoneTestReport,
+  milestoneTestStatus,
+} from "./game/milestone.ts";
 import { assessReviews } from "./game/reviews.ts";
 import { recoverRevision, revisePull } from "./game/revisions.ts";
 import { GitHub } from "./github.ts";
@@ -162,8 +167,55 @@ export class Game {
           );
           continue;
         }
+        if (cmd?.kind === "done") {
+          const head = (
+            await gh.reference("/repos/" + r.owner + "/" + r.repo, r.base!)
+          ).object.sha;
+          const before = await milestoneTestReport(r, gh);
+          const retryFailedSameHead =
+            r.milestoneDoneRequested &&
+            r.milestoneCheckHead === head &&
+            before.status === "failed";
+          const installed = await installMilestoneTests(
+            r,
+            gh,
+            retryFailedSameHead ||
+              (!r.milestoneDoneRequested && before.status === "missing"),
+          );
+          r.milestoneDoneRequested = true;
+          r.milestoneCheckHead = installed.sha;
+          this.store.save(r);
+          const report = await milestoneTestReport(r, gh);
+          if (report.status === "passed") {
+            await this.notice(
+              r,
+              gh,
+              "milestone-passed",
+              "✅ The trusted milestone checks passed. I’m finalizing the scorecard and debrief now.",
+            );
+            await this.finish(r, gh);
+          } else if (report.status === "failed") {
+            await this.notice(
+              r,
+              gh,
+              "milestone-failed-" + installed.sha,
+              `The trusted milestone checks failed: ${report.failed.join(", ")}. Fix the milestone and push your changes; the checks will run again.`,
+            );
+          } else {
+            await this.notice(
+              r,
+              gh,
+              "milestone-running-" + installed.sha,
+              "🧪 I’ve added the trusted milestone checks and started GitHub Actions. I’ll post your score and debrief when they finish.",
+            );
+          }
+          continue;
+        }
         const testStatus =
-          cmd?.kind === "finish" ? undefined : await milestoneTestStatus(r, gh);
+          cmd?.kind === "finish" ||
+          (scenarioFor(r).evaluatorFiles && !r.milestoneDoneRequested)
+            ? undefined
+            : await milestoneTestStatus(r, gh);
         if (testStatus === "passed") {
           try {
             await this.notice(
@@ -181,7 +233,28 @@ export class Game {
             });
           }
         }
-        if (cmd?.kind === "finish" || testStatus === "passed") {
+        if (r.milestoneDoneRequested) {
+          const report = await milestoneTestReport(r, gh);
+          const head = (
+            await gh.reference("/repos/" + r.owner + "/" + r.repo, r.base!)
+          ).object.sha;
+          if (r.milestoneCheckHead !== head) {
+            r.milestoneCheckHead = head;
+            this.store.save(r);
+          }
+          if (testStatus === "failed")
+            await this.notice(
+              r,
+              gh,
+              "milestone-failed-" + head,
+              `The trusted milestone checks failed: ${report.failed.join(", ")}. Fix the milestone and push your changes; the checks will run again.`,
+            );
+        }
+        if (
+          cmd?.kind === "finish" ||
+          (testStatus === "passed" &&
+            (!scenarioFor(r).evaluatorFiles || r.milestoneDoneRequested))
+        ) {
           await this.finish(r, gh);
         }
         report({

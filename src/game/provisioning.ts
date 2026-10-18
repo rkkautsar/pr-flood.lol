@@ -30,7 +30,7 @@ export async function seedRun(store: Persistence, r: Run, gh: GitHub) {
         protectedFiles: Object.fromEntries(
           (stage.protectedFiles ?? []).map((path) => [
             path,
-            stage.baseline[path],
+            (stage.evaluatorFiles ?? stage.baseline)[path],
           ]),
         ),
       });

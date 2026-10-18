@@ -122,6 +122,7 @@ test("webhook signatures bind raw bytes", () => {
 });
 test("commands require exact syntax", () => {
   assert.deepEqual(command("/game finish"), { kind: "finish" });
+  assert.deepEqual(command("/game done"), { kind: "done" });
   assert.deepEqual(command("/game revise 12"), { kind: "revise", number: 12 });
   assert.equal(command("hello /game finish"), undefined);
   assert.equal(command("/game revise -1"), undefined);

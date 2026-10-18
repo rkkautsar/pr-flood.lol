@@ -158,7 +158,8 @@ class Fake extends GitHub {
     }
     const branch = path.split("/git/refs/heads/")[1];
     this.refs[branch] = body.sha;
-    this.prs.find((p) => p.head.ref === branch).head.sha = body.sha;
+    const pull = this.prs.find((p) => p.head.ref === branch);
+    if (pull) pull.head.sha = body.sha;
     if (this.failRevision) {
       this.failRevision = false;
       throw Object.assign(new Error("network response lost"), { status: 500 });
@@ -245,13 +246,16 @@ test("seed errors carry a safe step without replacing the original error", async
     s.close();
   }
 });
-test("milestone stage seeds no authored work and gives full outcome credit on its protected E2E check", async () => {
+test("milestone stage withholds evaluator files until /game done, then grades and debriefs after Actions", async () => {
   const { s, fake, game, r } = await setup(selectScenario(inboxPack));
   try {
     assert.equal(fake.issues.length, 1);
     assert.equal(fake.prs.length, 0);
     assert.match(fake.issues[0].body, /direct sub-issues of Game Master #1/);
     assert.equal(fake.milestones.length, 1);
+    assert.match(fake.issues[0].body, /comment `\/game done` here/);
+    assert.ok(!fake.files.baseline[".github/workflows/inbox-e2e.yml"]);
+    assert.ok(!fake.files.baseline["test/e2e/inbox.spec.ts"]);
 
     fake.issues.push(
       {
@@ -325,26 +329,6 @@ test("milestone stage seeds no authored work and gives full outcome credit on it
     fake.pullFiles = [
       { filename: "web/app.js", status: "modified", patch: "+renderInbox();" },
     ];
-    fake.checkRunItems = [
-      {
-        name: "browser",
-        head_sha: "baseline",
-        status: "completed",
-        conclusion: "success",
-        app: { slug: "github-actions" },
-        check_suite: { id: 77 },
-      },
-    ];
-    fake.workflowRunItems = [
-      {
-        name: "Inbox E2E",
-        path: ".github/workflows/inbox-e2e.yml",
-        head_sha: "baseline",
-        status: "completed",
-        conclusion: "success",
-        check_suite_id: 77,
-      },
-    ];
     game.judgeEnabled = true;
     game.reviewer.gradeMilestone = async () => ({
       issueBreakdown: 0,
@@ -353,6 +337,77 @@ test("milestone stage seeds no authored work and gives full outcome credit on it
       reviewQuality: 0,
     });
 
+    await game.process("check_run", payload(r));
+    assert.equal(s.get(r.id).phase, "active");
+    assert.ok(!fake.files[fake.refs.main]["test/e2e/inbox.spec.ts"]);
+    assert.equal(r.milestoneDoneRequested, undefined);
+
+    await game.process("issue_comment", payload(r, "/game done"));
+    assert.equal(s.get(r.id).phase, "active");
+    assert.equal(s.get(r.id).milestoneDoneRequested, true);
+    const gradingHead = fake.refs.main;
+    assert.ok(fake.files[gradingHead][".github/workflows/inbox-e2e.yml"]);
+    assert.ok(fake.files[gradingHead]["test/e2e/inbox.spec.ts"]);
+    assert.ok(
+      fake.comments.some((comment) =>
+        comment.body.includes("started GitHub Actions"),
+      ),
+    );
+
+    fake.checkRunItems = [
+      {
+        name: "browser",
+        head_sha: gradingHead,
+        status: "completed",
+        conclusion: "failure",
+        app: { slug: "github-actions" },
+        check_suite: { id: 77 },
+      },
+    ];
+    fake.workflowRunItems = [
+      {
+        name: "Inbox E2E",
+        path: ".github/workflows/inbox-e2e.yml",
+        head_sha: gradingHead,
+        status: "completed",
+        conclusion: "failure",
+        check_suite_id: 77,
+      },
+    ];
+    await game.process("check_run", payload(r));
+    assert.equal(s.get(r.id).phase, "active");
+    assert.ok(
+      fake.comments.some((comment) => comment.body.includes("checks failed")),
+    );
+
+    const repair = await fake.commit(
+      "/repos/owner/game",
+      gradingHead,
+      { "src/fix.ts": "export const fix = true;" },
+      "Fix inbox behavior",
+    );
+    fake.refs.main = repair.sha;
+    await game.process("push", payload(r));
+    fake.checkRunItems = [
+      {
+        name: "browser",
+        head_sha: repair.sha,
+        status: "completed",
+        conclusion: "success",
+        app: { slug: "github-actions" },
+        check_suite: { id: 78 },
+      },
+    ];
+    fake.workflowRunItems = [
+      {
+        name: "Inbox E2E",
+        path: ".github/workflows/inbox-e2e.yml",
+        head_sha: repair.sha,
+        status: "completed",
+        conclusion: "success",
+        check_suite_id: 78,
+      },
+    ];
     await game.process("check_run", payload(r));
     const result = s.get(r.id).result!;
     assert.equal(s.get(r.id).phase, "finished");

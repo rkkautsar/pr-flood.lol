@@ -13,7 +13,7 @@ The launch page offers **Forum** and **Group Chat**. Forum is a runnable Express
 3. Install the App or approve repository access when prompted, then retry setup.
 4. Follow Game Master issue #1 in the created repository. Clone the repository and run its app to investigate behavior while reviewing.
 
-Review-game stages end when all their PRs are merged or closed. Milestone-driven stages end when the protected E2E check passes on the default branch. Comment `/game finish` in issue #1 to end early, `/game revise <PR-number>` to request a prepared revision, or `/game next` after a stage finishes to advance. Each new stage starts from its authored baseline on a new branch and preserves earlier results.
+Review-game stages end when all their PRs are merged or closed. In milestone-driven stages, the trusted E2E suite is withheld while the player plans and implements issues. Comment `/game done` on Game Master issue #1 when the milestone is ready: PR Flood installs the protected suite, GitHub Actions runs it, and the scorecard and debrief are published after it passes. A failure leaves the stage active while the player fixes the milestone. Comment `/game finish` to end early with a partial result, or `/game next` after a stage finishes to advance.
 
 Direct code edits remain possible on GitHub. Unsupported changes mark affected assessments unscored; they do not pause the game. Contributor portraits identify fictional characters. GitHub shows the App as the actual author.
 

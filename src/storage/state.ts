@@ -66,6 +66,8 @@ export const runSchema: z.ZodType<Run> = z.object({
       }),
     )
     .optional(),
+  milestoneDoneRequested: z.boolean().optional(),
+  milestoneCheckHead: z.string().optional(),
   offeredCards: strings.optional(),
   rerollsRemaining: z.number().int().nonnegative().optional(),
   rerollCommentIds: z.array(positiveId).max(32).optional(),

@@ -44,6 +44,10 @@ export type Run = {
   scenario: { id: string; version: string; stage: string; digest: string };
   /** Trusted milestone suites accumulated along this playthrough. */
   milestoneChecks?: MilestoneCheckSnapshot[];
+  /** The player has requested final milestone evaluation. */
+  milestoneDoneRequested?: boolean;
+  /** Default-branch commit currently being evaluated by the trusted suites. */
+  milestoneCheckHead?: string;
   /** Milestone cards already shown in this playthrough. */
   offeredCards?: string[];
   rerollsRemaining?: number;

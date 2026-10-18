@@ -545,13 +545,23 @@ export function publishScenario(repoInput: string): ScenarioPackage {
       id: stageId,
       title: stageMeta.title,
       intro: doc.body,
-      baseline,
+      baseline:
+        mode === "milestone"
+          ? Object.fromEntries(
+              Object.entries(baseline).filter(
+                ([path]) => !stageMeta.protectedFiles!.includes(path),
+              ),
+            )
+          : baseline,
       ...(mode === "milestone"
         ? {
             mode,
             requiredCheck: stageMeta.requiredCheck,
             workflowPath: stageMeta.workflowPath,
             protectedFiles: stageMeta.protectedFiles,
+            evaluatorFiles: Object.fromEntries(
+              stageMeta.protectedFiles!.map((path) => [path, baseline[path]]),
+            ),
             evaluation: stageMeta.evaluation,
             ...(stageMeta.pool ? { pool: stageMeta.pool } : {}),
           }

@@ -15,6 +15,8 @@ export type Stage = {
   workflowPath?: string;
   /** Test and workflow files that must remain identical to the seeded baseline. */
   protectedFiles?: string[];
+  /** Trusted milestone tests and workflows, withheld from the player baseline until grading. */
+  evaluatorFiles?: Record<string, string>;
   /** Scenario-specific rubric for the four non-outcome scorecard dimensions. */
   evaluation?: {
     issueBreakdown: string;

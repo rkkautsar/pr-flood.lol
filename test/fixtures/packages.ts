@@ -9,8 +9,12 @@ import {
 const forum = forum011 as ScenarioPackage;
 const baseline = {
   ...forum.stages[0].baseline,
+};
+const inboxEvaluatorFiles = {
   ".github/workflows/inbox-e2e.yml": "name: Inbox E2E\njob: browser\n",
   "test/e2e/inbox.spec.ts": "test('private inbox behavior', () => {});\n",
+};
+const mentionsEvaluatorFiles = {
   ".github/workflows/mentions-e2e.yml": "name: Mentions E2E\njob: browser\n",
   "test/e2e/mentions.spec.ts": "test('mentions behavior', () => {});\n",
 };
@@ -25,6 +29,7 @@ const inboxStage: Stage = {
   requiredCheck: "Inbox E2E / browser",
   workflowPath: ".github/workflows/inbox-e2e.yml",
   protectedFiles: [".github/workflows/inbox-e2e.yml", "test/e2e/inbox.spec.ts"],
+  evaluatorFiles: inboxEvaluatorFiles,
   evaluation: {
     issueBreakdown:
       "Reward independent, reviewable slices for the stated inbox behaviors. One broad issue covering the full milestone earns low breakdown credit; issue count itself is not a gate.",
@@ -54,6 +59,7 @@ const mentionsStage: Stage = {
     ".github/workflows/mentions-e2e.yml",
     "test/e2e/mentions.spec.ts",
   ],
+  evaluatorFiles: mentionsEvaluatorFiles,
 };
 export const milestonePackage: ScenarioPackage = {
   ...forum,

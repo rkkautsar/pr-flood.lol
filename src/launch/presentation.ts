@@ -15,7 +15,7 @@ export function publicLaunch(job: Job | undefined, slug = "pr-flood") {
         ? "Preparing your milestone"
         : "Contributors are arriving",
       job.mode === "milestone"
-        ? "Adding the release brief and trusted E2E workflow. You will create the issues and work them with Louibot locally."
+        ? "Adding the release brief. You will create the issues and work them with Louibot locally; trusted grading checks are added when you are ready to finish."
         : "Adding the release brief, issues, and pull requests. This can take a minute or two.",
     ],
     ready: [

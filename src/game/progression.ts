@@ -143,7 +143,10 @@ export async function rerollMilestoneCard(
     requiredCheck: stage.requiredCheck!,
     workflowPath: stage.workflowPath!,
     protectedFiles: Object.fromEntries(
-      (stage.protectedFiles ?? []).map((path) => [path, stage.baseline[path]]),
+      (stage.protectedFiles ?? []).map((path) => [
+        path,
+        (stage.evaluatorFiles ?? stage.baseline)[path],
+      ]),
     ),
   });
   await gh.patch(root + "/milestones/" + r.milestone, {

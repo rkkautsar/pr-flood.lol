@@ -107,6 +107,7 @@ const packageSchema = z
               .array(z.string().min(1).max(240))
               .max(20)
               .optional(),
+            evaluatorFiles: files.optional(),
             evaluation: z
               .object({
                 issueBreakdown: z.string().min(1).max(4000),
@@ -184,11 +185,14 @@ export function validatePackage(value: unknown): ScenarioPackage {
       throw new Error("Invalid milestone stage configuration");
     if (
       mode === "review" &&
-      (stage.requiredCheck || stage.workflowPath || stage.evaluation)
+      (stage.requiredCheck ||
+        stage.workflowPath ||
+        stage.protectedFiles ||
+        stage.evaluatorFiles ||
+        stage.evaluation)
     )
       throw new Error("Review stages cannot define a milestone check");
-    if (mode === "review" && stage.protectedFiles)
-      throw new Error("Review stages cannot define protected milestone files");
+    const evaluatorFiles = stage.evaluatorFiles;
     if (
       stage.protectedFiles &&
       (new Set(stage.protectedFiles).size !== stage.protectedFiles.length ||
@@ -198,8 +202,14 @@ export function validatePackage(value: unknown): ScenarioPackage {
             path
               .split("/")
               .some((part) => !part || part === "." || part === "..") ||
-            !(path in stage.baseline),
-        ))
+            (evaluatorFiles
+              ? !(path in evaluatorFiles) || path in stage.baseline
+              : !(path in stage.baseline)),
+        ) ||
+        (evaluatorFiles &&
+          Object.keys(evaluatorFiles).some(
+            (path) => !stage.protectedFiles!.includes(path),
+          )))
     )
       throw new Error("Invalid protected milestone files");
     if (
@@ -212,7 +222,7 @@ export function validatePackage(value: unknown): ScenarioPackage {
     if (
       stage.workflowPath &&
       (!stage.workflowPath.startsWith(".github/workflows/") ||
-        !(stage.workflowPath in stage.baseline))
+        !(stage.workflowPath in (stage.evaluatorFiles ?? stage.baseline)))
     )
       throw new Error("Invalid milestone workflow path");
   }

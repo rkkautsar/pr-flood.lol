@@ -108,6 +108,13 @@ test("publisher accepts a milestone stage with protected E2E files and no prepar
       ".github/workflows/inbox-e2e.yml",
       "test/e2e/inbox.spec.ts",
     ]);
+    assert.deepEqual(pack.stages[0].baseline, {
+      "src/value.ts": "export const value=1;",
+    });
+    assert.deepEqual(pack.stages[0].evaluatorFiles, {
+      ".github/workflows/inbox-e2e.yml": "name: Inbox E2E\n",
+      "test/e2e/inbox.spec.ts": "test('inbox', () => {});\n",
+    });
     assert.equal(validatePackage(pack).stages[0].mode, "milestone");
   } finally {
     rmSync(repo, { recursive: true, force: true });

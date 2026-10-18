@@ -17,6 +17,60 @@ export type MilestoneTestReport = {
   missing: string[];
 };
 
+export async function installMilestoneTests(
+  run: Run,
+  gh: GitHub,
+  forceCommit = false,
+): Promise<{ sha: string; changed: boolean }> {
+  const suites = run.milestoneChecks?.length
+    ? run.milestoneChecks
+    : (() => {
+        const stage = scenarioFor(run);
+        return [
+          {
+            stage: stage.id,
+            title: stage.title,
+            requiredCheck: stage.requiredCheck!,
+            workflowPath: stage.workflowPath!,
+            protectedFiles: Object.fromEntries(
+              (stage.protectedFiles ?? []).map((path) => [
+                path,
+                (stage.evaluatorFiles ?? stage.baseline)[path],
+              ]),
+            ),
+          },
+        ];
+      })();
+  const files: Record<string, string> = {};
+  for (const suite of suites) {
+    for (const [path, content] of Object.entries(suite.protectedFiles)) {
+      if (path in files && files[path] !== content)
+        throw new Error("Milestone suites define conflicting evaluator files");
+      files[path] = content;
+    }
+  }
+  if (!Object.keys(files).length)
+    throw new Error("Milestone package has no trusted evaluator files");
+  const root = runRoot(run);
+  const head = (await gh.reference(root, run.base!)).object.sha;
+  const current = await gh.treeFiles(root, head, Object.keys(files));
+  const changed = Object.entries(files).some(
+    ([path, value]) => current[path] !== value,
+  );
+  if (!changed && !forceCommit) return { sha: head, changed: false };
+  const commit = await gh.commit(
+    root,
+    head,
+    files,
+    "PR Flood: install trusted milestone checks",
+  );
+  await gh.patch(root + "/git/refs/heads/" + run.base, {
+    sha: commit.sha,
+    force: false,
+  });
+  return { sha: commit.sha, changed: true };
+}
+
 export async function milestoneTestReport(
   run: Run,
   gh: GitHub,
@@ -42,7 +96,7 @@ export async function milestoneTestReport(
           protectedFiles: Object.fromEntries(
             (stage.protectedFiles ?? []).map((path) => [
               path,
-              stage.baseline[path],
+              (stage.evaluatorFiles ?? stage.baseline)[path],
             ]),
           ),
         },
