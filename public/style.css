@@ -610,6 +610,37 @@ button:disabled {
   font-weight: 650;
 }
 
+.milestone-cards {
+  width: 100%;
+  color: #293c32;
+  font-size: 13px;
+}
+
+.milestone-cards > strong {
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.milestone-cards ul {
+  margin: 9px 0 0;
+  padding-left: 18px;
+  color: #58675e;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.milestone-cards li + li {
+  margin-top: 4px;
+}
+
+.milestone-cards > p {
+  margin: 10px 0 0;
+  color: #5a695f;
+  font-size: 10px;
+  line-height: 1.65;
+}
+
 label {
   display: block;
   width: 100%;
