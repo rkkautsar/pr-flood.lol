@@ -184,20 +184,6 @@ function renderScenarioCard(pack, session) {
     el("p", pack.description, "description"),
     renderTags(pack),
   );
-  if ((pack.milestoneCards ?? []).length) {
-    const cards = el("div", null, "milestone-cards");
-    cards.append(el("strong", "Milestone card pool"));
-    const list = el("ul");
-    for (const item of pack.milestoneCards) list.append(el("li", item.title));
-    cards.append(
-      list,
-      el(
-        "p",
-        "A card is selected for each stage. You can request up to two changes before planning.",
-      ),
-    );
-    content.append(cards);
-  }
   renderScenarioActions(content, pack, session);
 
   const previewLink = el("a", "Explore the starting app files ↗", "fine");
