@@ -70,7 +70,7 @@ function renderTags(pack) {
 }
 
 function renderConnection(session) {
-  const connect = el("a", "Connect GitHub to play", "button");
+  const connect = el("a", "Connect GitHub to play", "button button-primary");
   connect.href = "/auth/start";
   if (!session.ready) {
     connect.removeAttribute("href");
