@@ -4,7 +4,7 @@ Practice maintaining a real open-source project through GitHub. Review-game stag
 
 [Play](https://pr-flood.lol/) · [GitHub App](https://github.com/apps/pr-flood) · [App settings](https://github.com/settings/apps/pr-flood) · [Install App](https://github.com/apps/pr-flood/installations/new)
 
-The first scenario is **Forum**: a runnable Express, React, and SQLite application with five initial roadmap issues, ten launch PRs, and a second notification stage. Its [authoring repository](https://github.com/rkkautsar/forum-scenario) holds real stage and contribution branches. Player repositories contain application code; the game service keeps the rubric and prepared answers.
+The launch page offers **Forum** and **Group Chat**. Forum is a runnable Express, React, and SQLite application with review-based gameplay. Group Chat is a familiar, local-first messaging app with four alternative milestone cards: threads, @mentions, search, and channel muting. Its [public template repository](https://github.com/rkkautsar/group-chat-scenario) includes protected browser tests that rerun cumulatively as cards are completed. In milestone gameplay, players plan as direct sub-issues under Game Master #1 and work them with Louibot locally.
 
 ## Play
 

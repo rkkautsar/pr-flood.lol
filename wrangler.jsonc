@@ -41,7 +41,7 @@
     "binding": "AI",
   },
   "vars": {
-    "SCENARIO_REPOSITORIES": "rkkautsar/forum-scenario,rkkautsar/forum-inbox-scenario",
+    "SCENARIO_REPOSITORIES": "rkkautsar/forum-scenario,rkkautsar/group-chat-scenario",
     "JUDGE_ENABLED": "true",
     "REVIEW_COACHING_ENABLED": "true",
     "COACH_CONFIDENCE_THRESHOLD": "0.3",
